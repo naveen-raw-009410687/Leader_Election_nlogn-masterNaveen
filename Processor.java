@@ -67,13 +67,13 @@ public class Processor extends Thread implements Observer {
 		this.right = right;
 	}
 
-	//public boolean isAsleep() {
-	//	return asleep;
-//	}
-
-	public void setAsleep(boolean asleep) {
-	//	this.asleep = asleep;
-	}
+	
+	
+	/*Upon receiving [my-id, in, -] from left and right:
+phase = phase + 1
+send [my-id, out, 2^phase] to left and right
+Upon receiving [not-my-id, in, -] from left or right:
+send [not-my-id, in, -] to right or left*/
 
 	@Override
 	public void update(Observable arg0, Object arg1) {
@@ -83,13 +83,6 @@ public class Processor extends Thread implements Observer {
 		int jId = message.getidmessage();
 		int receivedPhase = message.getPhase();
 		int receivedHop = message.getHop();
-		
-		
-		/*Upon receiving [my-id, in, -] from left and right:
-phase = phase + 1
-send [my-id, out, 2^phase] to left and right
-Upon receiving [not-my-id, in, -] from left or right:
-send [not-my-id, in, -] to right or left*/
 		
 		// Switch statements for PROBE , REPLY, TERMINATE message CASE handling 
 		
@@ -135,19 +128,6 @@ send [not-my-id, in, -] to right or left*/
 			}
 			break;
 		
-		case TERMINATE:
-			if(jId == this.left.processorID) {
-				System.out.println("TERMINATING message traversed complete ring.Terminating all Procs.");
-				this.interrupt();
-			}
-			else {
-				System.out.println("Processor"+this.processorID+" is terminating....");
-				sendMessageToBuffer(message, this.leftOutBuf);
-				this.interrupt();
-			}
-			
-			break;
-		
 		case REPLY:
 			System.out.println("Processor "+this.processorID+" received REPLY message from "+jId);
 			if(buff == this.leftInBuf) {
@@ -169,6 +149,19 @@ send [not-my-id, in, -] to right or left*/
 					sendMessageToBuffer(new Message(MessageType.PROBE, this.processorID, receivedPhase+1, 1), this.rightOutBuf);
 				}
 			}
+			break;
+			
+		case TERMINATE:
+			if(jId == this.left.processorID) {
+				System.out.println("TERMINATING message traversed complete ring.Terminating all Procs.");
+				this.interrupt();
+			}
+			else {
+				System.out.println("Processor"+this.processorID+" is terminating....");
+				sendMessageToBuffer(message, this.leftOutBuf);
+				this.interrupt();
+			}
+			
 			break;
 		
 		default:
