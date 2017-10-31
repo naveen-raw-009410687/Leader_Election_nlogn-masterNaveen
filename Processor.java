@@ -3,31 +3,35 @@ import java.util.Observer;
 
 public class Processor extends Thread implements Observer {
 	
+	boolean ringleader;
 	Buffer rightInBuf;
 	 Buffer leftInBuf;
 	 Buffer rightOutBuf;
 	 Buffer leftOutBuf;
 	 int processorID;
-	 boolean leader;
+	 
 	 Processor left;
 	 Processor right;
 	 
-	 boolean replyFromLeft;
-	 boolean replyFromRight;
+	 boolean replyFromClockwise;
+	 boolean replyFromAntiClockwise;
 
 	public Processor(int id, Buffer rightInBuf, Buffer leftInBuf, Buffer rightOutBuf, Buffer leftOutBuf) 
 	
 	{
+		this.replyFromClockwise = false;
+		this.replyFromAntiClockwise = false;
+		this.ringleader = false;
 		this.processorID = id;
-		this.leader = false;
+		
 		this.rightInBuf = rightInBuf;
 		this.leftInBuf = leftInBuf;
+		
 		this.rightOutBuf = rightOutBuf;
 		this.leftOutBuf = leftOutBuf;
 		this.leftInBuf.addObserver(this);
 		this.rightInBuf.addObserver(this);
-		this.replyFromLeft = false;
-		this.replyFromRight = false;
+		
 	}
 		
 	public int getProcessorID() {
@@ -39,11 +43,11 @@ public class Processor extends Thread implements Observer {
 	}
 
 	public boolean isLeader() {
-		return leader;
+		return ringleader;
 	}
 
 	public void setLeader(boolean leader) {
-		this.leader = leader;
+		this.ringleader = leader;
 	}
 
 	public Processor getLeft() {
@@ -80,9 +84,18 @@ public class Processor extends Thread implements Observer {
 		int receivedPhase = message.getPhase();
 		int receivedHop = message.getHop();
 		
+		
+		/*Upon receiving [my-id, in, -] from left and right:
+phase = phase + 1
+send [my-id, out, 2^phase] to left and right
+Upon receiving [not-my-id, in, -] from left or right:
+send [not-my-id, in, -] to right or left*/
+		
+		// Switch statements for PROBE , REPLY, TERMINATE message CASE handling 
+		
 		switch(type) {
 		case PROBE:
-			System.out.println("Processor "+this.processorID+" received probe from Processor"+jId);
+			System.out.println("Processor "+this.processorID+" received PROBE message from Processor"+jId);
 			if(buff == this.leftInBuf) {
 				if(jId == this.processorID) {
 					try {
@@ -124,11 +137,11 @@ public class Processor extends Thread implements Observer {
 		
 		case TERMINATE:
 			if(jId == this.left.processorID) {
-				System.out.println("TERMINATE message has traversed the ring. Terminating all processes.");
+				System.out.println("TERMINATING message traversed complete ring.Terminating all Procs.");
 				this.interrupt();
 			}
 			else {
-				System.out.println("Processor"+this.processorID+" is terminating..");
+				System.out.println("Processor"+this.processorID+" is terminating....");
 				sendMessageToBuffer(message, this.leftOutBuf);
 				this.interrupt();
 			}
@@ -136,22 +149,22 @@ public class Processor extends Thread implements Observer {
 			break;
 		
 		case REPLY:
-			System.out.println("Processor "+this.processorID+" received reply message from "+jId);
+			System.out.println("Processor "+this.processorID+" received REPLY message from "+jId);
 			if(buff == this.leftInBuf) {
-				this.replyFromLeft = true;
+				this.replyFromClockwise = true;
 				if(jId != this.processorID) {
 					sendMessageToBuffer(message, this.rightOutBuf);
 				}
-				else if(this.replyFromRight) {
+				else if(this.replyFromAntiClockwise) {
 					System.out.println("Intermediate Leader in this phase " + receivedPhase + " is Processor" + this.processorID);
 					sendMessageToBuffer(new Message(MessageType.PROBE, this.processorID, receivedPhase+1, 1), this.leftOutBuf);
 				}
 			}
 			if(buff == this.rightInBuf) {
-				this.replyFromRight = true;
+				this.replyFromAntiClockwise = true;
 				if(jId != this.processorID) {
 					sendMessageToBuffer(message, this.leftOutBuf);
-				} else if(this.replyFromLeft) {
+				} else if(this.replyFromClockwise) {
 					System.out.println("Intermediate Leader in this phase " + receivedPhase + " is Processor" + this.processorID);
 					sendMessageToBuffer(new Message(MessageType.PROBE, this.processorID, receivedPhase+1, 1), this.rightOutBuf);
 				}
@@ -165,7 +178,7 @@ public class Processor extends Thread implements Observer {
 	
 	private void swallow(int jId) {
 		// TODO Auto-generated method stub
-		System.out.println("Message received from Processor "+jId+ " is swallowed at Processor "+this.processorID);
+		System.out.println("Message received from Processor "+jId+ " is swallow at Processor "+this.processorID);
 	}
 
 
@@ -173,7 +186,7 @@ public class Processor extends Thread implements Observer {
 	private void terminateAsLeader() throws InterruptedException {
 		
 		sendMessageToBuffer(new Message(MessageType.TERMINATE, this.processorID), this.leftOutBuf);
-		this.leader = true;
+		this.ringleader = true;
 		System.out.println("Processor "+this.processorID+" is terminating as leader.");
 		
 	}
@@ -198,9 +211,9 @@ public class Processor extends Thread implements Observer {
 	public void run() {
 	
 		{
-			System.out.println("Processor "+this.processorID+" sending probe to Processor "+this.left.getProcessorID());
+			System.out.println("Processor "+this.processorID+" sending probe to clockside Processor "+this.left.getProcessorID());
 			sendMessageToBuffer(new Message(MessageType.PROBE, this.processorID, 0, 1), this.leftOutBuf);
-			System.out.println("Processor "+this.processorID+" sending probe to Processor "+this.right.getProcessorID());
+			System.out.println("Processor "+this.processorID+" sending probe to anti clockside Processor "+this.right.getProcessorID());
 			sendMessageToBuffer(new Message(MessageType.PROBE, this.processorID, 0, 1), this.rightOutBuf);	
 		}
 	}
