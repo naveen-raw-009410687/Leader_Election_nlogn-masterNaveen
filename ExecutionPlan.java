@@ -16,51 +16,51 @@ public class ExecutionPlan {
 	}
 	
 	/**this is the same Ring leader election as with did in class 
-	 * This method creates channels and processors required for algorithm 
-	 * We have channel In & Out bidirectional both side for each processor hence 4 connections each Processor 
+	 * This method creates Bufs and processors required for algorithm 
+	 * We have Buf In & Out bidirectional both side for each processor hence 4 connections each Processor 
 	 * */
 	
 	public void initiate() {
 		
-		//Channel from Processor p0 to p1
-		Buffer channel01 = new Buffer("channel01");
-		//Channel from Processor p1 to p2
-		Buffer channel12 = new Buffer("channel12");
-		//Channel from Processor p2 to p3
-		Buffer channel23 = new Buffer("channel23");
-		//Channel from Processor p3 to p4
-		Buffer channel34 = new Buffer("channel34");
-		//Channel from Processor p4 to p5
-		Buffer channel45 = new Buffer("channel45");
-		//Channel from Processor p5 to p0
-		Buffer channel50 = new Buffer("channel50");
+		//Buffer from Processor p0 to p1
+		Buffer Buf01 = new Buffer("Buf01");
+		//Buf from Processor p1 to p2
+		Buffer Buf12 = new Buffer("Buf12");
+		//Buf from Processor p2 to p3
+		Buffer Buf23 = new Buffer("Buf23");
+		//Buf from Processor p3 to p4
+		Buffer Buf34 = new Buffer("Buf34");
+		//Buf from Processor p4 to p5
+		Buffer Buf45 = new Buffer("Buf45");
+		//Buf from Processor p5 to p0
+		Buffer Buf50 = new Buffer("Buf50");
 		
-		//Channel from Processor p0 to p5
-		Buffer channel05 = new Buffer("channel05");
-		//Channel from Processor p5 to p4
-		Buffer channel54 = new Buffer("channel54");
-		//Channel from Processor p4 to p3
-		Buffer channel43 = new Buffer("channel43");
-		//Channel from Processor p3 to p2
-		Buffer channel32 = new Buffer("channel32");
-		//Channel from Processor p2 to p1
-		Buffer channel21 = new Buffer("channel21");
-		//Channel from Processor p1 to p0
-		Buffer channel10 = new Buffer("channel10");
+		//Buf from Processor p0 to p5
+		Buffer Buf05 = new Buffer("Buf05");
+		//Buf from Processor p5 to p4
+		Buffer Buf54 = new Buffer("Buf54");
+		//Buf from Processor p4 to p3
+		Buffer Buf43 = new Buffer("Buf43");
+		//Buf from Processor p3 to p2
+		Buffer Buf32 = new Buffer("Buf32");
+		//Buf from Processor p2 to p1
+		Buffer Buf21 = new Buffer("Buf21");
+		//Buf from Processor p1 to p0
+		Buffer Buf10 = new Buffer("Buf10");
 		
 		//Creating and building ring topology distributed NW processors 
-		//Assigning Id, in-channel and out-channel to each processor 
-		//Buffer rightInChannel, Buffer leftInChannel, Buffer rightOutChannel, Buffer leftOutChannel
-		// Processor(int id, Buffer rightInChannel, Buffer leftInChannel, Buffer rightOutChannel, Buffer leftOutChannel) 
+		//Assigning Id, in-Buf and out-Buf to each processor 
+		//Buffer rightInBuf, Buffer leftInBuf, Buffer rightOutBuf, Buffer leftOutBuf
+		// Processor(int id, Buffer rightInBuf, Buffer leftInBuf, Buffer rightOutBuf, Buffer leftOutBuf) 
 		
-		p0 = new Processor(10,channel50, channel10, channel05, channel01);
-		p1 = new Processor(22, channel01, channel21, channel10, channel12);
-		p2 = new Processor(11, channel12, channel32, channel21, channel23);
-		p3 = new Processor(66, channel23, channel43, channel32, channel34);
-		p4 = new Processor(50, channel34, channel54, channel43, channel45);
-		p5 = new Processor(44, channel45, channel05, channel54, channel50);
+		p0 = new Processor(10,Buf50, Buf10, Buf05, Buf01);
+		p1 = new Processor(22, Buf01, Buf21, Buf10, Buf12);
+		p2 = new Processor(11, Buf12, Buf32, Buf21, Buf23);
+		p3 = new Processor(66, Buf23, Buf43, Buf32, Buf34);
+		p4 = new Processor(50, Buf34, Buf54, Buf43, Buf45);
+		p5 = new Processor(44, Buf45, Buf05, Buf54, Buf50);
 		
-		//Assigning left node to each processor as we are dealing with ring topology
+		//feeding Processors into Ring topology 
 		p0.setLeft(p1);
 		p1.setLeft(p2);
 		p2.setLeft(p3);
