@@ -61,12 +61,12 @@ public class ExecutionPlan {
 		p5 = new Processor(44, Buf45, Buf05, Buf54, Buf50);
 		
 		//feeding Processors into Ring topology 
-		p0.setLeft(p1);
-		p1.setLeft(p2);
-		p2.setLeft(p3);
-		p3.setLeft(p4);
-		p4.setLeft(p5);
-		p5.setLeft(p0);
+		p0.setLRing(p1);
+		p1.setLRing(p2);
+		p2.setLRing(p3);
+		p3.setLRing(p4);
+		p4.setLRing(p5);
+		p5.setLRing(p0);
 		
 		
 	}
@@ -82,12 +82,7 @@ public class ExecutionPlan {
 		p3.start();
 		p4.start();
 		p5.start();
-		p0.join();
-		p1.join();
-		p2.join();
-		p3.join();
-		p4.join();
-		p5.join();
+//		
 		
 	}
 }

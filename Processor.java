@@ -1,162 +1,213 @@
-import javafx.css.StyleableStringProperty;
-
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
 
-/**
- * Created by tphadke on 8/29/17.
- * processor has its own message buffer, id, children if applicable,
- * a parent process if itself is not root, and a neighbor pj which may
- * or may not be the parent, but sends the message to this processor.
- */
-public class Processor implements Observer {
-    //Each processsor has a message Buffer to store messages
-    Buffer messageBuffer ;
-    Integer id ;
-    Integer currentLeader;
-    public Processor right;
-    public Processor left;
-    //private static final Object lockObject = new Object();
-    
-    
-    /**
-     * initialize processor's params
-     */
-    public Processor(Integer id) {
-        messageBuffer = new Buffer();
-        this.id = id; //This is an invalid value. Since only +ve values are acceptable as processor Ids.
-        //Each processor is observing itself;
-        messageBuffer.addObserver(this);
-        this.currentLeader = -1;
-        
-    }
-    
-    public void setRight(Processor right) {
-        this.right = right;
-    }
-    
-    public void setLeft(Processor left) {
-        this.left = left;
-    }
-    
-    /**
-     * send message to this processor with reference to sender as pj
-     * @param message
-     */
-    //This method will add a message to this processors buffer.
-    //Other processors will invoke this method to send a message to this Processor
-    public void sendMessgeToMyBuffer(Message message){
-        messageBuffer.setMessage(message);
-    }
-    
-    
-    /**
-     * this method is called when the message buffer is updated with a new message
-     * @param observable
-     * @param arg
-     */
-    //This is analogous to recieve method.Whenever a message is dropped in its buffer this Pocesssor will respond
-    //TODO: implement the logic of receive method here
-    //      Hint: Add switch case for each of the conditions given in receive
-    public void update(Observable observable, Object arg) {
-        Message m = (Message) arg;
-        System.out.println("This Processor id: " + this.id);
-        System.out.println("Message Received: " + m.getId());
-        System.out.println("Message Type: " + m.getMessage());
-        String message = m.getMessage();
-        int mId = m.getId();
-        int hops = m.getHops();
-        int phase = m.getPhase();
-        
-        
-        
-        if(message.equals("probe"))
-        {
-            if(mId == this.left.id)
-            {
-                if((mId > this.id) && (hops < Math.pow(2,phase)))
-                {
-                    Message lprobe = new Message(mId,"probe",phase,hops+1);
-                    left.sendMessgeToMyBuffer(lprobe);
-                }
-                else if((mId > this.id) && (hops >= Math.pow(2,phase)))
-                {
-                    Message lprobe = new Message(mId,"reply",phase,hops);
-                    left.sendMessgeToMyBuffer(lprobe);
-                }
-                else
-                {
-                    //swallow
-                }
-            }
-            else if(mId == this.right.id) {
-                
-                if ((mId > this.id) && (hops < Math.pow(2, phase))) {
-                    Message rprobe = new Message(mId, "probe", phase, hops + 1);
-                    right.sendMessgeToMyBuffer(rprobe);
-                } else if ((mId > this.id) && (hops >= Math.pow(2, phase))) {
-                    Message rprobe = new Message(mId, "reply", phase, hops);
-                    right.sendMessgeToMyBuffer(rprobe);
-                } else {
-                    //swallow
-                }
-            }
-            else if(mId == this.id)
-            {
-                System.out.println("Leader has been selected, sending terminate messages.");
-                Message term = new Message(mId,"terminate");
-                left.sendMessgeToMyBuffer(term);
-                right.sendMessgeToMyBuffer(term);
-                // begin sending terminating message to all nodes
-            }
-        }
-        else if(message.equals("reply"))
-        {
-            if(mId == this.left.id)
-            {
-                if(mId == this.id)
-                {
-                    System.out.println("Entering next phase with: " + this.id);
-                    Message lprobe = new Message(mId,"probe",phase+1,1);
-                    left.sendMessgeToMyBuffer(lprobe);
-                }
-                else
-                {
-                    right.sendMessgeToMyBuffer(m);
-                }
-            }
-            else if(mId == this.right.id)
-            {
-                if(mId == this.id)
-                {
-                    System.out.println("Entering next phase with: " + this.id);
-                    Message rprobe = new Message(mId,"probe",phase+1,1);
-                    right.sendMessgeToMyBuffer(rprobe);
-                }
-                else
-                {
-                    left.sendMessgeToMyBuffer(m);
-                }
-            }
-        }
-        else if(message.equals("terminate"))
-        {
-            if(this.id == mId)
-            {
-                System.out.println("Terminate Message Received by Leader: " + this.id);
-            }
-            else
-            {
-                right.sendMessgeToMyBuffer(m);
-                
-            }
-        }
-        
-        
-        
-    }
-    
-    
+public class Processor extends Thread implements Observer {
+	
+	boolean ringleader;
+	Buffer rightInBuf;
+	 Buffer leftInBuf;
+	 Buffer rightOutBuf;
+	 Buffer leftOutBuf;
+	 int processorID;
+	 
+	 Processor left;
+	 Processor right;
+	 
+	 boolean replyFromClockwise;
+	 boolean replyFromAntiClockwise;
+
+	public Processor(int id, Buffer rightInBuf, Buffer leftInBuf, Buffer rightOutBuf, Buffer leftOutBuf) 
+	
+	{
+		this.replyFromClockwise = false;
+		this.replyFromAntiClockwise = false;
+		this.ringleader = false;
+		this.processorID = id;
+		
+		this.rightInBuf = rightInBuf;
+		this.leftInBuf = leftInBuf;
+		
+		this.rightOutBuf = rightOutBuf;
+		this.leftOutBuf = leftOutBuf;
+		this.leftInBuf.addObserver(this);
+		this.rightInBuf.addObserver(this);
+		
+	}
+		
+	public int getProcessorID() {
+		return processorID;
+	}
+
+	public void setProcessorID(int processorID) {
+		this.processorID = processorID;
+	}
+
+	public boolean isLeader() {
+		return ringleader;
+	}
+
+	public void setLeader(boolean leader) {
+		this.ringleader = leader;
+	}
+
+	public Processor getLeft() {
+		return left;
+	}
+
+	public void setLRing(Processor left) {
+		this.left = left;
+		left.setRight(this);
+	}
+
+	public Processor getRight() {
+		return right;
+	}
+
+	public void setRight(Processor right) {
+		this.right = right;
+	}
+
+	
+	
+	/*Upon receiving [my-id, in, -] from left and right:
+phase = phase + 1
+send [my-id, out, 2^phase] to left and right
+Upon receiving [not-my-id, in, -] from left or right:
+send [not-my-id, in, -] to right or left*/
+
+	@Override
+	public void update(Observable arg0, Object arg1) {
+		Buffer buff = (Buffer) arg0;
+		Message message = buff.getMessage();
+		MessageType type = message.getType();
+		int jId = message.getidmessage();
+		int receivedPhase = message.getPhase();
+		int receivedHop = message.getHop();
+		
+		// Switch statements for PROBE , REPLY, TERMINATE message CASE handling 
+		
+		switch(type) {
+		case PROBE:
+			System.out.println("Processor "+this.processorID+" received PROBE message from Processor"+jId);
+			if(buff == this.leftInBuf) {
+				if(jId == this.processorID) {
+					try {
+						terminateAsLeader();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				if((jId > this.processorID) && (receivedHop < Math.pow(2, receivedPhase))) {
+					sendMessageToBuffer(new Message(MessageType.PROBE, jId, receivedPhase, receivedHop+1),this.rightOutBuf);
+				}
+				if((jId > this.processorID) && (receivedHop >= Math.pow(2, receivedPhase))) {
+					sendMessageToBuffer(new Message(MessageType.REPLY, jId, receivedPhase), this.leftOutBuf);
+				}
+				if(jId < this.processorID) {
+					swallow(jId);
+				}
+				
+			}
+			if(buff == this.rightInBuf) {
+				if(message.getidmessage() == this.processorID) {
+					try {
+						terminateAsLeader();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				if((jId > this.processorID) && (receivedHop < Math.pow(2, receivedPhase))) {
+					sendMessageToBuffer(new Message(MessageType.PROBE, jId, receivedPhase, receivedHop+1),this.leftOutBuf);
+				}
+				if((jId > this.processorID) && (receivedHop >= Math.pow(2, receivedPhase))) {
+					sendMessageToBuffer(new Message(MessageType.REPLY,jId, receivedPhase), this.rightOutBuf);
+				}
+				if(jId < this.processorID) {
+					swallow(jId);
+				}
+			}
+			break;
+		
+		case REPLY:
+			System.out.println("Processor "+this.processorID+" received REPLY message from "+jId);
+			if(buff == this.leftInBuf) {
+				this.replyFromClockwise = true;
+				if(jId != this.processorID) {
+					sendMessageToBuffer(message, this.rightOutBuf);
+				}
+				else if(this.replyFromAntiClockwise) {
+					System.out.println("Intermediate Leader in this phase " + receivedPhase + " is Processor" + this.processorID);
+					sendMessageToBuffer(new Message(MessageType.PROBE, this.processorID, receivedPhase+1, 1), this.leftOutBuf);
+				}
+			}
+			if(buff == this.rightInBuf) {
+				this.replyFromAntiClockwise = true;
+				if(jId != this.processorID) {
+					sendMessageToBuffer(message, this.leftOutBuf);
+				} else if(this.replyFromClockwise) {
+					System.out.println("Intermediate Leader in this phase " + receivedPhase + " is Processor" + this.processorID);
+					sendMessageToBuffer(new Message(MessageType.PROBE, this.processorID, receivedPhase+1, 1), this.rightOutBuf);
+				}
+			}
+			break;
+			
+		case TERMINATE:
+			if(jId == this.left.processorID) {
+				System.out.println("TERMINATING message traversed complete ring.Terminating all Procs.");
+				this.interrupt();
+			}
+			else {
+				System.out.println("Processor"+this.processorID+" is terminating....");
+				sendMessageToBuffer(message, this.leftOutBuf);
+				this.interrupt();
+			}
+			
+			break;
+		
+		default:
+			break;
+		}
+	}
+	
+	private void swallow(int jId) {
+		// TODO Auto-generated method stub
+		System.out.println("Message received from Processor "+jId+ " is swallow at Processor "+this.processorID);
+	}
+
+
+
+	private void terminateAsLeader() throws InterruptedException {
+		
+		sendMessageToBuffer(new Message(MessageType.TERMINATE, this.processorID), this.leftOutBuf);
+		this.ringleader = true;
+		System.out.println("Processor "+this.processorID+" is terminating as leader.");
+		
+	}
+
+
+
+	public void sendMessageToBuffer(Message msg, Buffer Buf) {
+		Buf.setMessage(msg);
+	}
+	
+	//@Override
+	/*
+	 * 
+	 * Below run() method will 
+	 * 
+	 * Upon receiving no message
+	if asleep then
+	asleep = false
+	phase = 0
+	send [my-id, out, 1] to left and right*/
+	@Override
+	public void run() {
+	
+		{
+			System.out.println("Processor "+this.processorID+" sending probe to clockside Processor "+this.left.getProcessorID());
+			sendMessageToBuffer(new Message(MessageType.PROBE, this.processorID, 0, 1), this.leftOutBuf);
+			System.out.println("Processor "+this.processorID+" sending probe to anti clockside Processor "+this.right.getProcessorID());
+			sendMessageToBuffer(new Message(MessageType.PROBE, this.processorID, 0, 1), this.rightOutBuf);	
+		}
+	}
 }
